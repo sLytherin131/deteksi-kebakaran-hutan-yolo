@@ -6,7 +6,7 @@ from PIL import Image
 from ultralytics import YOLO
 
 # Load model YOLOv5m yang sudah dilatih
-MODEL_PATH = "yolov5m_wildfire.pt"  # Ganti dengan path model Anda
+MODEL_PATH = "yolov5_best_model.pt"  # Ganti dengan path model Anda
 model = YOLO(MODEL_PATH)
 
 # Fungsi untuk melakukan deteksi
