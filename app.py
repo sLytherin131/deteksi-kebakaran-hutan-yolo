@@ -37,7 +37,7 @@ if option == "Kamera":
         image = Image.open(img_file)
         image = np.array(image)
         detected_image = detect_fire(image)
-        st.image(detected_image, channels="RGB", use_column_width=True)
+        st.image(detected_image, channels="RGB", use_container_width=True)
 
 elif option == "Upload Gambar":
     uploaded_file = st.file_uploader("Unggah Gambar", type=["jpg", "png", "jpeg"])
