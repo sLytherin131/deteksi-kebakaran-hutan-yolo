@@ -3,41 +3,54 @@ import torch
 import cv2
 import numpy as np
 from PIL import Image
+from ultralytics import YOLO
 
-# Load model YOLOv5
-@st.cache_resource
-def load_model():
-    model_path = "yolov5_best_model.pt"  # Sesuaikan dengan nama model yang ada di repo
-    model = torch.hub.load("ultralytics/yolov5", "custom", path=model_path, force_reload=True)
-    return model
+# Load model YOLOv5m yang sudah dilatih
+MODEL_PATH = "yolov5m_wildfire.pt"  # Ganti dengan path model Anda
+model = YOLO(MODEL_PATH)
 
-model = load_model()
-
-# Fungsi untuk deteksi kebakaran
+# Fungsi untuk melakukan deteksi
 def detect_fire(image):
     results = model(image)
-    return results
+    detections = results[0].boxes.data.cpu().numpy()  # Mengambil bounding box
 
-# Streamlit UI
-st.title("🔥 Deteksi Kebakaran Hutan (WILDFIRE) 🔥")
+    for box in detections:
+        x1, y1, x2, y2, conf, cls = box
+        if conf > 0.5:  # Tampilkan hanya jika confidence > 50%
+            label = f"WILDFIRE {conf:.2f}"
+            cv2.rectangle(image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
+            cv2.putText(image, label, (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 
-# Opsi upload gambar atau menggunakan kamera
-option = st.radio("Pilih Input:", ["Gunakan Kamera", "Upload Gambar"])
+    return image
 
-if option == "Gunakan Kamera":
-    camera_image = st.camera_input("Ambil Gambar")
-    if camera_image:
-        image = Image.open(camera_image)
-        image = np.array(image)  # Konversi ke format numpy
-        results = detect_fire(image)
+# Konfigurasi UI Streamlit
+st.title("🔥 Deteksi Kebakaran Hutan Real-Time")
+st.write("Gunakan kamera untuk mendeteksi kebakaran hutan secara real-time.")
 
-        # Konversi hasil ke gambar dengan bounding box
-        st.image(results.render()[0], caption="Hasil Deteksi Kebakaran", use_column_width=True)
+# Pilih sumber input: Kamera atau Upload Gambar
+option = st.radio("Pilih Sumber Input:", ("Kamera", "Upload Gambar"))
+
+if option == "Kamera":
+    cap = cv2.VideoCapture(0)
+    stframe = st.empty()
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            st.warning("Gagal membaca kamera.")
+            break
+
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        detected_frame = detect_fire(frame)
+
+        stframe.image(detected_frame, channels="RGB", use_column_width=True)
+
+    cap.release()
 
 elif option == "Upload Gambar":
-    uploaded_image = st.file_uploader("Upload Gambar", type=["jpg", "png", "jpeg"])
-    if uploaded_image:
-        image = Image.open(uploaded_image)
+    uploaded_file = st.file_uploader("Unggah Gambar", type=["jpg", "png", "jpeg"])
+    if uploaded_file is not None:
+        image = Image.open(uploaded_file)
         image = np.array(image)
-        results = detect_fire(image)
-        st.image(results.render()[0], caption="Hasil Deteksi Kebakaran", use_column_width=True)
+        detected_image = detect_fire(image)
+        st.image(detected_image, channels="RGB", use_column_width=True)
